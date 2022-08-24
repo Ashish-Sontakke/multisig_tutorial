@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.16;
+pragma solidity 0.8.4;
 
 contract MultisigWallet {
     event NewProposal(uint256 proposalId, address creator, string info);
 
     // address[] public owners;
 
-    mapping(address => bool) isOwner;
-    uint256 noOfOwners;
+    mapping(address => bool) public isOwner;
+    uint256 public noOfOwners;
 
-    uint256 counter;
+    uint256 public counter;
 
     // {
     //     "a": false,
     //     "b": false,
     // }
 
-    address authority;
+    address public authority;
 
     struct Proposal {
         address proposalOwner;
@@ -28,14 +28,18 @@ contract MultisigWallet {
     }
 
     // proposalID => ownerAddress => votedOrNot
-    mapping(uint256 => mapping(address => bool)) voted;
+    mapping(uint256 => mapping(address => bool)) public voted;
 
-    Proposal[] proposals;
+    Proposal[] public proposals;
     mapping(uint256 => Proposal) proposalsMapping;
 
     constructor() {
         authority = msg.sender;
     }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 
     modifier onlyAuthority() {
         require(msg.sender == authority, "ACCESS_DENIED");
@@ -66,7 +70,7 @@ contract MultisigWallet {
         address _to,
         uint256 _amount,
         string memory _info
-    ) public onlyOwners returns (uint256) {
+    ) public payable onlyOwners returns (uint256) {
         require(_amount > 0, "INVALID_AMOUNT");
         require(_to != address(0), "INVALID_ADDRESS");
 
@@ -112,6 +116,10 @@ contract MultisigWallet {
         Proposal storage proposal = proposals[proposalId];
         require(!proposal.executed, "ALREADY_ECECUTED");
         require(proposal.proposalOwner == msg.sender, "NOT_PROPOSAL_OWNER");
+        require(
+            proposal.amount < address(this).balance,
+            "INSUFFICIENT_BALANCE"
+        );
         // did this proposal get mejority
         require(proposal.confirmations > noOfOwners / 2, "CAN_NOT_EXECUTE");
         proposal.executed = true;
